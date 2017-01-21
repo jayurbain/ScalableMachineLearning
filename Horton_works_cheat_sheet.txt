@@ -1,0 +1,25 @@
+# Horton_works_cheat_sheet.txt
+
+Jay Urbain, PhD
+1/20/20178
+
+HDP - Hadoop Development Platform)
+http://hortonworks.com/
+
+White paper on HDP for Hadoop Ecosystem
+http://hortonworks.com/info/connected-data-platforms
+
+1) Download Hortonworks Sandbox on a VM
+Select 'Download for Virtual Box'
+
+2) Download Virtual Box
+https://www.virtualbox.org/wiki/Downloads
+
+3) Complete the following tutorials
+Tutorial Home: http://hortonworks.com/tutorials/
+
+1) Learning the Ropes of the Horton Sandbox
+http://hortonworks.com/hadoop-tutorial/learning-the-ropes-of-the-hortonworks-sandbox/
+
+2) Hadoop Tutorial - Getting Started with HDP
+http://hortonworks.com/hadoop-tutorial/hello-world-an-introduction-to-hadoop-hcatalog-hive-and-pig/

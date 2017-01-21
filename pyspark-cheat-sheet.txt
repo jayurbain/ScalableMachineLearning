@@ -1,0 +1,1107 @@
+# PySpark cheat sheet
+# Jay Urbain
+# 1/19/2017
+
+# Running spark on databricks cluster
+bin/pyspark --packages com.databricks:spark-csv_2.10:1.0.3
+
+# setting environment options to launch jupyter notebook with pyspark
+IPYTHON_OPTS="notebook" bin/pyspark
+
+IPYTHON_OPTS="notebook" bin/pyspark --packages com.databricks:spark-csv_2.10:1.0.3
+
+IPYTHON_OPTS="notebook" bin/pyspark --packages graphframes:graphframes:0.1.0-spark1.6
+
+IPYTHON_OPTS="notebook" pyspark --packages graphframes:graphframes:0.1.0-spark1.6
+
+bin/pyspark --packages com.databricks:spark-csv_2.10:1.0.3
+
+bin/pyspark --packages graphframes:graphframes:0.1.0-spark1.6
+
+spark-1.6.2-bin-hadoop2.6/bin/pyspark --packages graphframes:graphframes:0.1.0-spark1.6
+
+IPYTHON_OPTS="notebook" spark-1.6.2-bin-hadoop2.6/bin/pyspark --packages graphframes:graphframes:0.1.0-spark1.6
+
+
+source /opt/rh/python27/enable 
+python --version 
+
+export SPARK_HOME=/Users/jayurbain/Dropbox/spark-1.6.2-bin-hadoop2.6
+export IPYTHON=1
+export PYSPARK_PYTHON=/Applications/anaconda/bin/python2.7
+export PYSPARK_DRIVER_PYTHON=ipython2.7
+export PYSPARK_DRIVER_PYTHON_OPTS="notebook"
+
+
+setting it in the properties file (default is spark-defaults.conf),
+spark.driver.memory              5g
+or by supplying configuration setting at runtime
+$ ./bin/spark-shell --driver-memory 5g
+
+
+bin/pyspark --driver-memory 8g
+
+######################################
+
+# experiment
+
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+
+sqlContext = SQLContext(sc)
+
+people = sqlContext.read.json("examples/src/main/resources/people.json")
+
+# Displays the content of the DataFrame to stdout
+people.show()
+
+fields = [StructField("name", StringType(), True),
+	StructField("age", IntegerType(), True)]
+schemaPeople = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaPeople = sqlContext.createDataFrame(people, schemaPeople)
+
+schemaPeople.printSchema()
+
+# Register the DataFrame as a table.
+schemaPeople.registerTempTable("people")
+
+# SQL can be run over DataFrames that have been registered as a table.
+results = sqlContext.sql("SELECT name, age FROM people")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: "Name: " + p.name + " Age: " + p.age)
+for name in names.collect():
+  print(name)
+
+######################################
+
+# experiment
+
+# Import SQLContext and data types
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+
+# sc is an existing SparkContext.
+sqlContext = SQLContext(sc)
+
+# Load a text file and convert each line to a tuple.
+lines = sc.textFile("examples/src/main/resources/peopleheader.txt")
+parts = lines.map(lambda l: l.split(","))
+people = parts.map(lambda p: (p[0], int(p[1].strip()))
+
+# The schema is encoded in a string.
+#schemaString = "name age"
+
+#fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
+#schema = StructType(fields)
+
+fields = [StructField("name", StringType(), True),
+	StructField("age", IntegerType(), True)]
+schema = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaPeople = sqlContext.createDataFrame(people, schema)
+
+schemaPeople.printSchema()
+
+# Register the DataFrame as a table.
+schemaPeople.registerTempTable("people")
+
+# SQL can be run over DataFrames that have been registered as a table.
+results = sqlContext.sql("SELECT name, age FROM people")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: "Name: " + p.name + " Age: " + str(p.age))
+for name in names.collect():
+  print(name)
+
+
+################
+This works!
+
+# Patients
+
+# Import SQLContext and data types
+from pyspark.sql import SQLContext, HiveContext
+from pyspark.sql.types import *
+from datetime import datetime
+import time
+from pyspark.sql.functions import *
+
+# sc is an existing SparkContext.
+sqlContext = HiveContext(sc)
+
+#powerPlantDF = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true', delimiter='\t').load('/databricks-datasets/power-plant/data')
+
+# Load a text file and convert each line to a tuple
+lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/patient_records_dob_all.txt")
+
+#lines = sc.textFile("hdfs:///tmp/crdw/patient_records_dob_all.txt")
+
+parts = lines.map(lambda l: l.split("\t"))
+patients = parts.map(lambda p: (p[0], p[1], datetime.strptime(p[2], "%Y-%m-%d %H:%M:%S"), datetime.strptime(p[3], "%Y-%m-%d %H:%M:%S"), p[4], int(p[5]), p[6], p[7], p[8], p[9], p[10].strip()))
+
+# patients.cache()
+
+# patients.count()
+# 1168815
+
+# DateType TimestampType
+fields = [StructField("PATIENT_NUM", StringType(), True),
+	StructField("VITAL_STATUS_CD", StringType(), True),
+	StructField("BIRTH_DATE", DateType(), True),
+	StructField("DEATH_DATE", DateType(), True),
+	StructField("SEX_CD", StringType(), True),
+	StructField("AGE_IN_YEARS_NUM", IntegerType(), True),
+	StructField("LANGUAGE_CD", StringType(), True),
+	StructField("RACE_CD", StringType(), True),
+	StructField("MARITAL_STATUS_CD", StringType(), True),
+	StructField("RELIGION_CD", StringType(), True),
+	StructField("ZIP_CD", StringType(), True)]
+schema_patients = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaPatients = sqlContext.createDataFrame(patients, schema_patients)
+
+schemaPatients.columns
+
+schemaPatients.printSchema()
+
+# Register the DataFrame as a table.
+
+sqlContext.sql("DROP TABLE IF EXISTS patients")
+#dbutils.fs.rm("dbfs:/user/hive/warehouse/power_plant", True)
+sqlContext.registerDataFrameAsTable(schemaPatients, "patients")
+sqlContext.sql("SELECT PATIENT_NUM FROM patients limit 100").show(5)
+
+
+#sqlContext.cacheTable("facts")
+
+#schemaPatients.registerTempTable("patients")
+
+schemaPatients.cache()
+
+schemaPatients.is_cached
+
+start_time = time.time()
+schemaPatients.select("PATIENT_NUM").show(5)
+elapsed_time = time.time() - start_time
+print elapsed_time
+
+schemaPatients.select(["PATIENT_NUM","AGE_IN_YEARS_NUM"]).show(5)
+
+start_time = time.time()
+schemaPatients.count()
+elapsed_time = time.time() - start_time
+print elapsed_time
+
+schemaPatients.select(["PATIENT_NUM","AGE_IN_YEARS_NUM"]).orderBy(desc("AGE_IN_YEARS_NUM")).show(5)
+
+
+// test
+
+elapsed_time = time.time() - start_time
+print elapsed_time
+
+start_time = time.time()
+patients.count()
+elapsed_time = time.time() - start_time
+print elapsed_time
+
+sqlContext.sql("SELECT PATIENT_NUM FROM patients limit 100").show(5)
+
+# SQL can be run over DataFrames that have been registered as a table.
+start_time = time.time()
+results = sqlContext.sql("SELECT PATIENT_NUM FROM patients limit 100")
+names = results.map(lambda p: "PATIENT_NUM: " + p.PATIENT_NUM)
+for name in names.collect():
+  print(name)
+
+start_time = time.time()
+results = sqlContext.sql("SELECT PATIENT_NUM FROM patients order by PATIENT_NUM desc limit 100").show(5)
+names = results.map(lambda p: "PATIENT_NUM: " + p.PATIENT_NUM)
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT PATIENT_NUM, ZIP_CD FROM patients ORDER BY PATIENT_NUM desc limit 100").show(5)
+names = results.map(lambda p: "PATIENT_NUM: " + p.PATIENT_NUM + " ZIP_CD: " + p.ZIP_CD)
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT PATIENT_NUM, AGE_IN_YEARS_NUM FROM patients ORDER BY AGE_IN_YEARS_NUM desc")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: "PATIENT_NUM: " + p.PATIENT_NUM + " AGE_IN_YEARS_NUM: " + str(p.AGE_IN_YEARS_NUM))
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT PATIENT_NUM, BIRTH_DATE, AGE_IN_YEARS_NUM FROM patients ORDER BY AGE_IN_YEARS_NUM desc limit 100")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: "" + p.PATIENT_NUM + " " + str(p.BIRTH_DATE) + " " + str(p.AGE_IN_YEARS_NUM))
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT max(AGE_IN_YEARS_NUM) as max_age FROM patients group by AGE_IN_YEARS_NUM")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: str(p.max_age))
+for name in names.collect():
+  print(name)
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: "" + p.PATIENT_NUM + " " + str(p.BIRTH_DATE) + " " + str(p.AGE_IN_YEARS_NUM))
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT AGE_IN_YEARS_NUM, count(*) as n FROM patients group by AGE_IN_YEARS_NUM ORDER BY count(*) desc")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: str(p.AGE_IN_YEARS_NUM) + " " + str(p.n))
+for name in names.collect():
+  print(name)
+
+schemaPatients.groupBy().max('AGE_IN_YEARS_NUM').collect()
+
+schemaPatients.groupBy().max('AGE_IN_YEARS_NUM').first()[0]
+
+schemaPatients.groupBy().sum('AGE_IN_YEARS_NUM').collect()
+
+# people.filter(people.age > 30).join(department, people.deptId == department.id)).groupBy(department.name, "gender").agg({"salary": "avg", "age": "max"})
+
+
+schemaPatients.join(schemaFacts, schemaPatients.PATIENT_NUM==schemaFacts.PATIENT_NUM).show(5)
+
+schemaPatients.join(schemaFacts, schemaPatients.PATIENT_NUM=schemaFacts.PATIENT_NUM).select(col("PATIENT_NAME")).take(5)
+
+df = movieStats[popularMovies].join(pd.DataFrame(similarMovies, columns=['similarity']))
+
+
+
+################
+
+# Patient names
+
+# Import SQLContext and data types
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+from datetime import datetime
+from pyspark.sql.functions import *
+import time
+
+# sc is an existing SparkContext.
+sqlContext = HiveContext(sc)
+
+# Load a text file and convert each line to a tuple
+lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/export_patient_names_08032016_jay.csv")
+
+#lines = sc.textFile("hdfs:///tmp//export_patient_names_08032016_jay.csv")
+
+parts = lines.map(lambda l: l.replace(","," ").replace('"','').replace('.','').split("\t"))
+patientnames = parts.map(lambda p: (p[0], p[1].strip()))
+
+# patientnames.cache()
+
+#patientnames.count()
+
+# DateType TimestampType
+fields = [
+	StructField("PATIENT_NAME", StringType(), True),
+	StructField("PATIENT_NUM", StringType(), True)]
+schema_patientnames = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaPatientNames = sqlContext.createDataFrame(patientnames, schema_patientnames)
+
+schemaPatientNames.columns
+
+schemaPatientNames.printSchema()
+
+# Register the DataFrame as a table.
+schemaPatientNames.registerTempTable("patientnames")
+
+schemaPatientNames.select(["PATIENT_NUM","PATIENT_NAME"]).show(5)
+
+schemaPatientNames.select(["PATIENT_NUM","PATIENT_NAME"]).sort(desc("PATIENT_NUM")).show()
+
+schemaPatientNames.join(schemaPatients, on="PATIENT_NUM").select(col("PATIENT_NAME")).take(5)
+
+#schemaPatientNames.cache()
+
+# spark.cacheTable("tableName") or dataFrame.cache()
+
+sqlContext.cacheTable("patientnames")
+
+# sqlContext.registerDataFrameAsTable(schemaPatientNames, 'patientnames')
+schemaPatientNames.registerTempTable("patientnames")
+sqlContext.sql("SELECT * from patientnames").show(5)
+
+sqlContext.sql("SELECT p.PATIENT_NUM, pn.PATIENT_NAME from patients p, patientnames pn where p.PATIENT_NUM=pn.PATIENT_NUM").show(5)
+
+
+results = sqlContext.sql("SELECT p.PATIENT_NUM, pn.PATIENT_NAME from patientnames pn, patients p where p.PATIENT_NUM=pn.PATIENT_NUM")
+
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: p.PATIENT_NUM, p.PATIENT_NAME)
+for name in names.collect():
+  print(name)
+
+# outer join  
+results = sqlContext.sql("SELECT p.PATIENT_NUM, coalesce(pn.PATIENT_NAME,'bob') as PATIENT_NAME from patients p left outer join patientnames pn on (p.PATIENT_NUM=pn.PATIENT_NUM) order by pn.PATIENT_NAME desc")
+
+# inner join on patients and patient names
+results = sqlContext.sql("SELECT p.PATIENT_NUM, pn.PATIENT_NAME from patients p join patientnames pn on (p.PATIENT_NUM=pn.PATIENT_NUM) order by pn.PATIENT_NAME desc")
+
+results = sqlContext.sql("SELECT p.PATIENT_NUM, pn.PATIENT_NAME from patients p, patientnames pn where p.PATIENT_NUM=pn.PATIENT_NUM")
+
+
+results = sqlContext.sql("SELECT PATIENT_NUM FROM patients order by PATIENT_NUM desc limit 100")
+names = results.map(lambda p: "PATIENT_NUM: " + p.PATIENT_NUM)
+for name in names.collect():
+  print(name)
+
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: p.PATIENT_NUM, p.PATIENT_NAME)
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT n.PATIENT_NUM_I2B2 from notes n");
+
+results = sqlContext.sql("SELECT n.PATIENT_NUM_I2B2, pn.PATIENT_NUM from notes n, patientnames pn where n.PATIENT_NUM_I2B2=pn.PATIENT_NUM");
+
+# 3322652 join
+# 3323004 notes
+
+// test
+start_time = time.time()
+patients.count()
+elapsed_time = time.time() - start_time
+print elapsed_time
+
+schemaPatients.join(schemaPatientNames, on="PATIENT_NUM").show(5)
+
+schemaPatients.join(schemaPatientNames, schemaPatients["PATIENT_NUM"]==schemaPatientNames["PATIENT_NUM"]).show(5)
+
+schemaPatients.join(schemaPatientNames, schemaPatients.PATIENT_NUM==schemaPatientNames.PATIENT_NUM).show(5)
+
+schemaPatients.join(schemaPatientNames, schemaPatients.PATIENT_NUM==schemaPatientNames.PATIENT_NUM).select(schemaPatients.PATIENT_NUM).show(5)
+
+
+schemaPatients.join(schemaPatientNames, schemaPatients.PATIENT_NUM==schemaPatientNames.PATIENT_NUM).select(schemaPatients.PATIENT_NUM, schemaPatientNames.PATIENT_NAME).show(5)
+
+schemaPatients.registerTempTable("patients")
+schemaPatientNames.registerTempTable("patientnames")
+
+sqlContext.sql("select p.PATIENT_NUM, pn.PATIENT_NAME from patients p, patientnames pn where p.PATIENT_NUM=pn.PATIENT_NUM").show(5)
+
+
+sqlContext.sql("select pn.PATIENT_NUM, pn.PATIENT_NAME from patientnames pn").show(5)
+
+
+
+#################################
+# fact
+
+hadoop fs -cat /tmp/observations_8_12.csv | head -n 1000000 > fact1000000.csv
+hdfs dfs -copyFromLocal fact1000000.csv /tmp/.
+hdfs dfs -ls fact1000000.csv /tmp/.
+
+hadoop fs -cat /tmp/observations_8_12.csv | head -n 72750 > fact72750.csv
+hdfs dfs -copyFromLocal fact72750.csv /tmp/.
+hdfs dfs -ls fact72750.csv /tmp/.
+
+# Import SQLContext and data types
+from pyspark.sql import SQLContext, HiveContext
+from pyspark.sql.types import *
+from datetime import datetime
+import time
+from pyspark.sql.functions import *
+from dateutil.parser import parse
+
+# sc is an existing SparkContext.
+sqlContext = HiveContext(sc)
+
+# Load a text file and convert each line to a tuple
+#lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/opioid_fact_records_1000000.txt")
+#lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/opioid_fact_records_all.txt")
+
+#lines = sc.textFile("hdfs:///tmp/crdw/opioid_fact_records_1000000.txt")
+
+lines = sc.textFile("hdfs:///tmp/observations_8_12.csv")
+
+#lines = sc.textFile("hdfs:///tmp/fact72750.csv")
+
+#lines = sc.textFile("hdfs:///tmp/fact1000000.csv")
+
+
+# not george
+#parts = lines.map(lambda l: l.split("\t"))
+# o.PATIENT_NUM, o.ENCOUNTER_NUM, o.CONCEPT_CD, o.START_DATE, o.END_DATE, o.PROVIDER_ID
+# datetime.strptime(p[3], "%Y-%m-%d %H:%M:%S")
+#facts = parts.map(lambda p: (p[0], p[1], p[2], datetime.strptime(p[3].replace('None', '2100-01-01 00:00:00'), "%Y-%m-%d %H:%M:%S"), datetime.strptime(p[4].replace('None', '2100-01-01 00:00:00'), "%Y-%m-%d %H:%M:%S"), p[5].strip()))
+
+# george
+parts = lines.map(lambda l: l.split(","))
+
+# 2011-05-05 00:00:00
+#facts = parts.map(lambda p: (p[0].strip(), p[1].strip(), p[2].strip(), p[3].strip(), datetime.strptime(p[4].strip().replace('None', '2011-05-05 00:00:00'), "%Y-%m-%d %H:%M:%S"), datetime.strptime(p[5].strip().replace('None', '2011-05-05 00:00:00'), "%Y-%m-%d %H:%M:%S") ))
+
+#facts = parts.map(lambda p: (p[0].strip(), p[1].strip(), p[2].strip(), p[3].strip(), parse(p[4].strip().replace('None', '2100-01-01 00:00:00')), parse(p[5].strip().replace('None', p[4].strip())) ))
+
+#facts0 = parts.map(lambda p: (p[0].strip(), p[1].strip(), p[2].strip(), p[3].strip(), p[4].strip(), p[5].strip() ))
+
+'''
+def parseDate(p, default):
+	try:
+		p_ = parse(p)
+	except ValueError:
+		try:
+			p_ = parse(default)
+		except ValueError:
+			#p_ = parse(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+			print 'shit!'
+	return p_
+'''
+
+def parseDate(p, default):
+	try:
+		p_ = parse(p)
+	except ValueError:
+		p_ = parse(default)
+	return p_
+
+facts = parts.map(lambda p: (p[0].strip(), p[1].strip(), p[2].strip(), p[3].strip(), parseDate(p[4].strip(), '2016-08-17'), parseDate(p[5].strip(), '2016-08-17') ))
+
+#parts.count()
+
+# jay
+fields = [StructField("PATIENT_NUM", StringType(), True),
+	StructField("ENCOUNTER_NUM", StringType(), True),
+	StructField("CONCEPT_CD", StringType(), True),
+	StructField("START_DATE", DateType(), True),
+	StructField("END_DATE", DateType(), True),
+	StructField("PROVIDER_ID", StringType(), True)]
+schema_facts = StructType(fields)
+
+# george
+fields = [StructField("PATIENT_NUM", StringType(), True),
+	StructField("ENCOUNTER_NUM", StringType(), True),
+	StructField("CONCEPT_CD", StringType(), True),
+	StructField("PROVIDER_ID", StringType(), True),
+	StructField("START_DATE", DateType(), True),
+	StructField("END_DATE", DateType(), True)]
+schema_facts = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaFacts = sqlContext.createDataFrame(facts, schema_facts)
+
+schemaFacts.columns
+
+# schemaFacts.count()
+# 2,055,478,608
+
+schemaFacts.printSchema()
+
+# Register the DataFrame as a table.
+schemaFacts.registerTempTable("facts")
+
+sqlContext.cacheTable("facts")
+
+
+schemaFacts.select(["PATIENT_NUM","CONCEPT_CD","PROVIDER_ID","START_DATE"]).show(5)
+
+schemaFacts.select(["PATIENT_NUM","CONCEPT_CD","PROVIDER_ID","START_DATE"]).sort(desc("PATIENT_NUM")).show(5)
+
+schemaFacts.select(["PATIENT_NUM","CONCEPT_CD","PROVIDER_ID","START_DATE","END_DATE"]).sort(desc("PATIENT_NUM")).show(5)
+
+16/08/18 04:25:56 INFO DAGScheduler: Job 8 finished: showString at NativeMethodAccessorImpl.java:-2, took 39625.996090 s
++-----------+--------------------+--------------------+----------+----------+
+|PATIENT_NUM|          CONCEPT_CD|         PROVIDER_ID|START_DATE|  END_DATE|
++-----------+--------------------+--------------------+----------+----------+
+| 2056175271|  'ENC_DATE:2016_06'|'4db1f721b2712fea...|2016-06-13|2016-06-13|
+| 2056175271|  'REASON_VISIT:500'|                 '@'|2016-06-13|2016-06-13|
+| 2056175271|'ENC_TYPE:outpati...|                 '@'|2016-06-13|2016-08-17|
+| 2056175271|'ORDER_MED_ID:48830'|'6a36d727a36b3eac...|2016-06-13|2016-08-17|
+| 2056175271|             'ICD9:'|                 '@'|2016-06-14|2016-06-14|
++-----------+--------------------+--------------------+----------+----------+
+only showing top 5 rows
+
+schemaFacts.select(["PATIENT_NUM","CONCEPT_CD","PROVIDER_ID","START_DATE","END_DATE"]).show(100)
+
+16/08/18 04:58:41 INFO DAGScheduler: Job 9 finished: showString at NativeMethodAccessorImpl.java:-2, took 227.731046 s
++-----------+--------------------+--------------------+----------+----------+
+|PATIENT_NUM|          CONCEPT_CD|         PROVIDER_ID|START_DATE|  END_DATE|
++-----------+--------------------+--------------------+----------+----------+
+| 2028614206|         'CPT:99211'|'ece529d480d2bea2...|2011-05-05|2011-05-05|
+| 2044759919|         'CPT:99284'|'76470942f5f13641...|2006-12-14|2006-12-14|
+| 2053538964|        'CPT:POC113'|'19e1577f9b21baab...|2012-08-07|2012-08-07|
+| 2054385000|         'CPT:83735'|'56e1f945d14f9280...|2013-08-17|2013-08-17|
+
+after cache:
+
+16/08/18 05:00:16 INFO DAGScheduler: Job 10 finished: showString at NativeMethodAccessorImpl.java:-2, took 0.015146 s
++-----------+--------------------+--------------------+----------+----------+
+|PATIENT_NUM|          CONCEPT_CD|         PROVIDER_ID|START_DATE|  END_DATE|
++-----------+--------------------+--------------------+----------+----------+
+| 2028614206|         'CPT:99211'|'ece529d480d2bea2...|2011-05-05|2011-05-05|
+| 2044759919|         'CPT:99284'|'76470942f5f13641...|2006-12-14|2006-12-14|
+| 2053538964|        'CPT:POC113'|'19e1577f9b21baab...|2012-08-07|2012-08-07|
+| 2054385000|         'CPT:83735'|'56e1f945d14f9280...|2013-08-17|2013-08-17|
+
+
+hadoop fs -cat /path/to/file | tail
+
+lines.filter(lambda x: x.find('3476d21788a75ca26d72cc9090bb18092da3e948d7a79b73ce6869f23eaef1c9')).collect()
+
+hadoop fs -cat /tmp/observations_8_12.csv | head -n 1000 fact1000.txt
+
+
+#schemaFacts.join(schemaPatients, on="PATIENT_NUM").select(col("PATIENT_NAME")).take(5)
+
+schemaFacts.select("PATIENT_NUM").show(5)
+
+
+
+# SQL can be run over DataFrames that have been registered as a table.
+
+results = sqlContext.sql("SELECT PATIENT_NUM FROM facts ORDER BY PATIENT_NUM desc limit 100")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: "PATIENT_NUM: " + p.PATIENT_NUM)
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT PATIENT_NUM, ENCOUNTER_NUM, START_DATE FROM facts ORDER BY PATIENT_NUM desc limit 100")
+names = results.map(lambda p: "PATIENT_NUM: " + p.PATIENT_NUM + " ENCOUNTER_NUM: " + p.ENCOUNTER_NUM + " START_DATE: " + str(p.START_DATE))
+for name in names.collect():
+  print(name)
+
+sqlContext.sql("select PATIENT_NUM, ENCOUNTER_NUM, START_DATE, CONCEPT_CD from facts").show(1000)
+
+sqlContext.sql("select PATIENT_NUM, ENCOUNTER_NUM, START_DATE, CONCEPT_CD from facts where ENCOUNTER_NUM like '%ORDER%'").show(10)
+
+sqlContext.sql("select PATIENT_NUM, ENCOUNTER_NUM, START_DATE, collect_list(CONCEPT_CD) from facts where ENCOUNTER_NUM like 'ICD%' group by PATIENT_NUM, ENCOUNTER_NUM, START_DATE").show(10)
+
+#################################
+
+powerPlantDF = sqlContext.read.format('com.databricks.spark.csv').options(header='false', inferschema='false', delimiter='\t').load('/databricks-datasets/power-plant/data')
+
+
+altPowerPlantDF = sqlContext.read.format('com.databricks.spark.csv').options(header='true', delimiter='\t').load('/databricks-datasets/power-plant/data', schema = customSchema)
+
+#################################
+# provider
+
+# Import SQLContext and data types
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+from datetime import datetime
+
+# sc is an existing SparkContext.
+sqlContext = SQLContext(sc)
+
+# Load a text file and convert each line to a tuple
+#lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/provider_records.txt")
+
+lines = sc.textFile("hdfs:///tmp/crdw/provider_records.txt")
+
+parts = lines.map(lambda l: l.split("\t"))
+# d.PROVIDER_ID, d.PROVIDER_PATH, d.NAME_CHAR as PROVIDER_NAME
+providers = parts.map(lambda p: (p[0], p[1], p[2].strip()))
+
+providers.count()
+
+fields = [StructField("PROVIDER_ID", StringType(), True),
+	StructField("PROVIDER_PATH", StringType(), True),
+	StructField("PROVIDER_NAME", StringType(), True)]
+schema_providers = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaProviders = sqlContext.createDataFrame(providers, schema_providers)
+
+schemaProviders.columns
+
+schemaProviders.printSchema()
+
+schemaProviders.select("PROVIDER_ID").show(5)
+
+# Register the DataFrame as a table.
+schemaFacts.registerTempTable("providers")
+
+#################################
+# concept
+
+# Import SQLContext and data types
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+from datetime import datetime
+
+# sc is an existing SparkContext.
+sqlContext = SQLContext(sc)
+
+# Load a text file and convert each line to a tuple
+lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/concept_records.txt")
+
+lines = sc.textFile("hdfs:///tmp/crdw/concept_records.txt")
+
+parts = lines.map(lambda l: l.split("\t"))
+# select c.CONCEPT_PATH, CONCEPT_CD, c.NAME_CHAR as CONCEPT_NAME
+concepts = parts.map(lambda p: (p[0], p[1], p[2].strip()))
+
+concepts.count()
+
+fields = [StructField("CONCEPT_PATH", StringType(), True),
+	StructField("CONCEPT_CD", StringType(), True),
+	StructField("CONCEPT_NAME", StringType(), True)]
+schema_concepts = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaConcepts = sqlContext.createDataFrame(concepts, schema_concepts)
+
+schemaConcepts.columns
+
+schemaConcepts.printSchema()
+
+schemaConcepts.select("*").show(5)
+
+# Register the DataFrame as a table.
+schemaConcepts.registerTempTable("concepts")
+
+#######################################################
+
+import datetime
+now = datetime.datetime.now()
+print(now)
+
+# original SOLR query
+
+select 
+
+select ID, PATIENT_NUM, CONCEPT_CD, CONCEPT_PATH, CONCEPT_NAME, *MODIFIER_CD,* START_DATE, END_DATE, ENCOUNTER_NUM, NOTE_TEXT, VITAL_STATUS, BIRTH_DATE, DEATH_DATE, SEX_CD, AGE_IN_YEARS_NUM, LANGUAGE_CD, RACE_CD, MARITAL_STATUS_CD, RELIGION_CD, ZIP_CD, PROVIDER_ID, PROVIDER_PATH, PROVIDER_NAME from i2b2_crdw_pain_07052016 limit 10000"
+
+
+# JOIN patients, facts, providers
+sqlContext.sql("select * from patients p, facts f, providers d  where p.PATIENT_NUM=f.PATIENT_NUM and f.PROVIDER_ID=d.PROVIDER_ID").show(5)
+
+
+
+results = sqlContext.sql("SELECT facts.PATIENT_NUM, facts.ENCOUNTER_NUM, facts.START_DATE, patients.ZIP_CD FROM facts, patients WHERE facts.PATIENT_NUM=patients.PATIENT_NUM ORDER BY patients.ZIP_CD desc limit 100")
+
+names = results.map(lambda p: "" + p.PATIENT_NUM + " " + p.ENCOUNTER_NUM + " " + str(p.START_DATE) + " " + p.ZIP_CD)
+for name in names.collect():
+  print(name)
+
+print("time delta: " +  str(datetime.datetime.now() - now))
+
+results = sqlContext.sql("SELECT facts.PATIENT_NUM, facts.ENCOUNTER_NUM, facts.START_DATE, patients.AGE_IN_YEARS_NUM, providers.PROVIDER_NAME FROM facts, patients, providers WHERE facts.PATIENT_NUM=patients.PATIENT_NUM and facts.PROVIDER_ID=providers.PROVIDER_ID")
+
+names = results.map(lambda p: "" + p.PATIENT_NUM + " " + p.ENCOUNTER_NUM + " " + str(p.START_DATE) + " " + str(p.AGE_IN_YEARS_NUM) + " " + p.PROVIDER_NAME)
+for name in names.collect():
+  print(name)
+
+
+ sqlContext.sql("SELECT facts.PATIENT_NUM, facts.ENCOUNTER_NUM, facts.START_DATE, patients.AGE_IN_YEARS_NUM, providers.PROVIDER_NAME FROM facts, patients, providers WHERE facts.PATIENT_NUM=patients.PATIENT_NUM and facts.PROVIDER_ID=providers.PROVIDER_ID ORDER BY patients.ZIP_CD desc").show(5)
+
+
+
+
+results.groupBy().max('AGE_IN_YEARS_NUM').collect()
+
+
+results = sqlContext.sql("SELECT max(patients.AGE_IN_YEARS_NUM) as max_age FROM patients")
+names = results.map(lambda p: "" + str(p.max_age))
+for name in names.collect():
+  print(name)
+
+
+results = sqlContext.sql("SELECT patients.AGE_IN_YEARS_NUM FROM patients order by patients.AGE_IN_YEARS_NUM asc")
+names = results.map(lambda p: "" + str(p.AGE_IN_YEARS_NUM))
+for name in names.collect():
+  print(name)
+
+print "Query performed in {} seconds".format(round(tt,3))
+
+schemaPatients.select("AGE_IN_YEARS_NUM").groupBy().count().show()
+
+schemaPatients.select("AGE_IN_YEARS_NUM").groupBy().max().show()
+
+
+
+#################################
+# notes
+
+# Import SQLContext and data types
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+from datetime import datetime
+
+# sc is an existing SparkContext.
+sqlContext = SQLContext(sc)
+
+# Load a text file and convert each line to a tuple
+#lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/export_inc_100.csv")
+#lines = sc.textFile("hdfs:///tmp/crdw/export_inc_100.csv")
+
+lines1 = sc.textFile("hdfs:///tmp/crdw/export_inc.csv")
+lines2 = sc.textFile("hdfs:///tmp/crdw/export_prev.csv")
+# collectAsMap()
+#lines1 = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/export_inc.csv")
+#lines2 = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/export_prev.csv")
+#lines = lines1.__add__(lines2)
+lines = lines1.union(lines2)
+
+lines.count()
+# 3323004
+# 779208      
+# 100
+
+# PATIENT_NUM_I2B2,ENCOUNTER_NUM_I2B2,ENCOUNTER_IDE,ORIG_ENCOUNTER_NUM,PAT_ENC_CSN_ID,NOTE_TEXT,CONTACT_DATE,CONCEPT_CD
+parts = lines.map(lambda l: l.split("\t"))
+notes = parts.map(lambda p: (p[0].strip('"'), p[1].strip('"'), p[2].strip('"'), p[3], p[4].strip('"'), datetime.strptime(p[5].strip('"'), "%Y-%m-%d %H:%M:%S"), p[6].strip('"'), p[7].strip('"').strip()) )
+
+#datetime.strptime('"2015-10-21 00:00:00"'.strip('"'), "%Y-%m-%d %H:%M:%S")
+
+#datetime.strptime('2015-10-21 00:00:00', "%Y-%m-%d %H:%M:%S")
+
+#parts.count()
+
+fields = [StructField("PATIENT_NUM_I2B2", StringType(), True),
+	StructField("ENCOUNTER_NUM_I2B2", StringType(), True),
+	StructField("ENCOUNTER_IDE", StringType(), True),
+	StructField("ORIG_ENCOUNTER_NUM", StringType(), True),
+	StructField("PAT_ENC_CSN_ID", StringType(), True),
+	StructField("CONTACT_DATE", DateType(), True),
+	StructField("CONCEPT_CD", StringType(), True),
+	StructField("NOTE_TEXT", StringType(), True)]
+schema_notes = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaNotes = sqlContext.createDataFrame(notes, schema_notes)
+
+schemaNotes.columns
+
+schemaNotes.printSchema()
+
+schemaNotes.select("PATIENT_NUM_I2B2").show()
+
+schemaNotes.select("CONTACT_DATE").show()
+
+schemaNotes.select("NOTE_TEXT").show()
+
+# Register the DataFrame as a table.
+schemaNotes.registerTempTable("notes")
+# sqlContext.registerDataFrameAsTable(dataDF, 'dataframe')
+
+# SQL can be run over DataFrames that have been registered as a table.
+
+sqlContext.sql("SELECT PATIENT_NUM_I2B2 FROM notes").show(5)
+
+results = sqlContext.sql("SELECT PATIENT_NUM_I2B2 FROM notes ORDER BY PATIENT_NUM_I2B2 desc")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: "PATIENT_NUM_I2B2: " + p.PATIENT_NUM_I2B2)
+for name in names.collect():
+  print(name)
+
+
+from time import gmtime, strftime
+strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
+'Thu, 28 Jun 2001 14:17:15 +0000'
+
+results = sqlContext.sql("SELECT PATIENT_NUM_I2B2, ENCOUNTER_NUM_I2B2, ENCOUNTER_IDE, ORIG_ENCOUNTER_NUM, PAT_ENC_CSN_ID, CONTACT_DATE, CONCEPT_CD, NOTE_TEXT FROM notes ORDER BY PATIENT_NUM_I2B2 desc")
+names = results.map(lambda p: "" + p.PATIENT_NUM_I2B2 + " " + p.ENCOUNTER_NUM_I2B2 + " " + p.ENCOUNTER_IDE + " " + p.ORIG_ENCOUNTER_NUM + " " + p.PAT_ENC_CSN_ID + " " + str(p.CONTACT_DATE) + " " + p.CONCEPT_CD + " " + p.NOTE_TEXT)
+for name in names.collect():
+  print(name)
+
+names = results.map(lambda p: "" + p.PATIENT_NUM_I2B2 + " " + p.ENCOUNTER_NUM_I2B2   + " " + p.ENCOUNTER_IDE + " " + p.ORIG_ENCOUNTER_NUM + " " + p.PAT_ENC_CSN_ID + " " + p.CONCEPT_CD)
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT CONTACT_DATE from notes")
+names = results.map(lambda p: "" + str(p.CONTACT_DATE))
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT p.PATIENT_NUM, n.PATIENT_NUM_I2B2 FROM patients p, notes n WHERE p.PATIENT_NUM=n.PATIENT_NUM_I2B2")
+names = results.map(lambda p: "" + p.PATIENT_NUM + " " + p.PATIENT_NUM_I2B2)
+for name in names.collect():
+  print(name)
+
+
+results = sqlContext.sql("SELECT count(*) as n FROM patients p, notes n WHERE p.PATIENT_NUM=n.PATIENT_NUM_I2B2")
+names = results.map(lambda p: "" + str(p.n))
+for name in names.collect():
+  print(name)
+
+
+results = sqlContext.sql("SELECT count(*) as n FROM patients p, notes n WHERE p.PATIENT_NUM=n.PATIENT_NUM_I2B2")
+names = results.map(lambda p: "" + str(p.n))
+for name in names.collect():
+  print(name)
+
+results = sqlContext.sql("SELECT p.PATIENT_NUM, n.PATIENT_NUM_I2B2, f.START_DATE, d.PROVIDER_NAME FROM patients p, notes n, facts f, providers d WHERE p.PATIENT_NUM=n.PATIENT_NUM_I2B2 AND p.PATIENT_NUM=f.PATIENT_NUM AND n.ENCOUNTER_NUM_I2B2 = f.ENCOUNTER_NUM AND f.PROVIDER_ID=d.PROVIDER_ID limit 100")
+names = results.map(lambda p: "" + p.PATIENT_NUM + " " + p.PATIENT_NUM_I2B2 + " " + str(p.START_DATE) + " " + p.PROVIDER_NAME)
+for name in names.collect():
+  print(name)
+
+from pyspark.sql import functions as F
+from pyspark.sql.types import StringType
+schemaFacts.groupby("PATIENT_NUM").agg(F.collect_list("CONCEPT_CD")).show()
+
+schemaFacts.groupby("PATIENT_NUM").agg(F.collect_list("CONCEPT_CD")).show()
+
+
+# tada!!!!
+results = sqlContext.sql("SELECT f.PATIENT_NUM, f.ENCOUNTER_NUM, collect_list(f.CONCEPT_CD) as CONCEPT_CD FROM facts f group by f.PATIENT_NUM, f.ENCOUNTER_NUM limit 100")
+names = results.map(lambda p: "" + p.PATIENT_NUM + " " + p.CONCEPT_CD)
+for name in names.collect():
+  print(name)
+
+# super tada!!!!
+sqlContext.sql("SELECT f.PATIENT_NUM, f.ENCOUNTER_NUM, collect_list(f.CONCEPT_CD) as CONCEPT_CD FROM facts f group by f.PATIENT_NUM, f.ENCOUNTER_NUM limit 100").show(truncate=False)
+
+
+>>> df.groupBy('class').pivot('year').avg('hwy').show()
+
+#################################
+# deid notes 
+
+# Import SQLContext and data types
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+from datetime import datetime
+from itertools import chain
+
+# sc is an existing SparkContext.
+sqlContext = HiveContext(sc)
+
+# Load a text file and convert each line to a tuple
+#lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/note_text_id_i2b2_prev_inc_07272016_deid.txt")
+#lines = sc.textFile("hdfs:///tmp/crdw/export_inc_100.csv")
+#lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/note_text_id_i2b2_prev_inc_07312016_deid.txt")
+
+lines = sc.textFile("/Users/jayurbain/Dropbox/MCW/i2b2_CRDW/JAY_HNO_NOTE_TEXT_COMB_RANDOM_08052016_10000.txt")
+
+lines.count()
+# 3323004
+# 779208      
+# 100
+
+# select id, note_id, orig_note_text, regex_note_text, deid_note_text, msecs_ner, msecs_regex
+parts = lines.map(lambda l: l.replace("|","\t").split("\t"))
+# select id, x1, x2, x3, orig_note_text, regex_note_text, deid_note_text, msecs_ner, msecs_regex
+deid_notes = parts.map(lambda p: (p[0].strip('"'), p[1].strip('"'), p[2].strip('"'), datetime.strptime(p[3].strip('"'), "%Y-%m-%d"), p[4].strip('"'), p[5].strip('"'), p[6].strip('"'), p[7].strip('"'), p[8].strip('"').strip()) )
+
+#datetime.strptime('"2015-10-21 00:00:00"'.strip('"'), "%Y-%m-%d %H:%M:%S")
+
+#datetime.strptime('2015-10-21 00:00:00', "%Y-%m-%d %H:%M:%S")
+
+#parts.count()
+
+# id, note_id, orig_note_text, regex_note_text, deid_note_text, msecs_ner, msecs_regex
+fields = [StructField("id", IntegerType(), True),
+	StructField("patient_num", StringType(), True),
+	StructField("encounter_num", StringType(), True),
+	StructField("contact_date", StringType(), True),
+	StructField("orig_note_text", StringType(), True),
+	StructField("regex_note_text", StringType(), True),
+	StructField("pat_enc_csn_id", StringType(), True),
+	StructField("deid_note_text", DateType(), True),
+	StructField("msecs_ner", StringType(), True),
+	StructField("msecs_regex", StringType(), True)]
+schema_deid_notes = StructType(fields)
+
+# Apply the schema to the RDD.
+schemaDeIdNotes = sqlContext.createDataFrame(deid_notes, schema_deid_notes)
+
+schemaDeIdNotes.columns
+
+schemaDeIdNotes.printSchema()
+
+schemaDeIdNotes.select("patient_num").show()
+
+schemaDeIdNotes.select("deid_note_text").show()
+
+# Register the DataFrame as a table.
+schemaNotes.registerTempTable("notes")
+# sqlContext.registerDataFrameAsTable(dataDF, 'dataframe')
+
+# SQL can be run over DataFrames that have been registered as a table.
+
+results = sqlContext.sql("SELECT PATIENT_NUM_I2B2 FROM notes ORDER BY PATIENT_NUM_I2B2 desc")
+
+# The results of SQL queries are RDDs and support all the normal RDD operations.
+names = results.map(lambda p: "PATIENT_NUM_I2B2: " + p.PATIENT_NUM_I2B2)
+for name in names.collect():
+  print(name)
+
+
+
+sqlContext.sql("select p.PATIENT_NUM_I2B2, n.ENCOUNTER_NUM_I2B2, n.CONTACT_DATE FROM patients p, notes n where p.PATIENT_NUM=n.PATIENT_NUM_I2B2").show(5)
+
+
+sqlContext.sql("select n.PATIENT_NUM_I2B2, n.ENCOUNTER_NUM_I2B2, n.CONTACT_DATE FROM notes n").show(5)
+
+
+#####################################
+
+this works - need HiveContext!!!
+
+from pyspark import SparkContext
+from pyspark.sql import HiveContext
+from pyspark.sql import functions as F
+
+#sc = SparkContext("local")
+
+sqlContext = HiveContext(sc)
+
+df = sqlContext.createDataFrame([
+    ("a", None, None),
+    ("a", "code1", None),
+    ("a", "code2", "name2"),
+], ["id", "code", "name"])
+
+df.show()
+
+(df
+  .groupby("id")
+  .agg(F.collect_set("code"),
+       F.collect_list("name"))
+  .show())
+
+
+
+
+#Medical College of Wisconsin, 8701 Watertown Plank Road, Miwaukee, WI 53226- Conference Rooms H1210/1230/1250
+
+#################################
+
+
+Hi Kent,
+
+Things are going pretty well.
+
+When I write more complex queries, e.g., joining multiple RDD dataframes, I'm receiving
+a "(too many open files)" error.
+
+This appears to be due to the default "ulimit" on the cluster set too low. It appears to be
+a relatively common problem.
+
+http://stackoverflow.com/questions/25707629/why-does-spark-job-fail-with-too-many-open-files
+http://apache-spark-user-list.1001560.n3.nabble.com/quot-Too-many-open-files-quot-exception-on-reduceByKey-td2462.html
+http://docs.hortonworks.com/HDPDocuments/Ambari-2.2.0.0/bk_Installing_HDP_AMB/content/_check_the_maximum_open_file_descriptors.html
+https://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.3.0/bk_installing_manually_book/content/ref-729d1fb0-6d1b-459f-a18a-b5eba4540ab5.1.html
+
+Thanks,
+Jay
+
+
+#################################
+
+
+object GroupConcat extends UserDefinedAggregateFunction {
+	def inputSchema = new StructType().add("x", StringType)
+	def bufferSchema = new StructType().add("buff", ArrayType(StringType))
+    def dataType = StringType
+    def deterministic = true 
+
+    def initialize(buffer: MutableAggregationBuffer) = {
+      buffer.update(0, ArrayBuffer.empty[String])
+    }
+
+    def update(buffer: MutableAggregationBuffer, input: Row) = {
+      if (!input.isNullAt(0)) 
+        buffer.update(0, buffer.getSeq[String](0) :+ input.getString(0))
+    }
+
+    def merge(buffer1: MutableAggregationBuffer, buffer2: Row) = {
+      buffer1.update(0, buffer1.getSeq[String](0) ++ buffer2.getSeq[String](0))
+    }
+
+    def evaluate(buffer: Row) = UTF8String.fromString(
+      buffer.getSeq[String](0).mkString(","))
+}
+
+
+
+
+#################################
+
+'''
+header = lines.first()
+header
+linesHeader = lines.filter(lambda l: "PATIENT_NUM_I2B2" in l)
+linesHeader.collect()
+lines = lines.filter(lambda l: "PATIENT_NUM_I2B2" not in l)
+lines.count()
+# 779207
+firstLineNoHeader = linesNoHeader;
+linesNoHeaderShort = linesNoHeader.take(5)
+'''
+
+
+resultset = sql("SELECT testDF.PassengerID, testDF.Name, genmodDF.Survived FROM testDF, genmodDF WHERE testDF.PassengerID = genmodDF.PassengerID").take(30)
+
+
+val resultset = sql("SELECT testDF.PassengerID, testDF.Name, genmodDF.Survived FROM testDF LEFT OUTER JOIN genmodDF ON testDF.PassengerID = genmodDF.PassengerID").take(30)
+
+df.sort($"col1", $"col2".desc)
+
+
+
+
+df = sqlContext.createDataFrame(
+    [(1.0, 0.3, 1.0), (1.0, 0.5, 0.0), (-1.0, 0.6, 0.5), (-1.0, 5.6, 0.2)],
+    ("col1", "col2", "col3"))
+
+df.groupBy("col1").sum()
+
+
+
+###############
+
+
+
+DataFrame df	=	sqlContext.read().format("solr").options(options).load();	
+count	=	df.filter(df.col("type_s").equalTo(“echo")).count();	
+Spark SQL
+Query Solr, then expose results as a SQL table
+Map<String,	String>	options	=	new	HashMap<String,	String>();	
+options.put("zkhost"
+,	zkHost);	
+options.put("collection”,	"tweets");	
+DataFrame df	=	sqlContext.read().format("solr").options(options).load();	
+df.registerTempTable("tweets");	
+sqlContext.sql("SELECT	count(*)	FROM	tweets	WHERE	type_s='echo'");	
+
+val solrDF	=	sqlContext.load("solr",	Map(	
+		"zkHost"	->	"localhost:9983",	
+		"collection"	->	"gettingstarted")).filter("provider_s='twitter'")	
+solrDF.registerTempTable("tweets")	
+sqlContext.sql("SELECT	COUNT(type_s)	FROM	tweets	WHERE	type_s='echo'").show()	
+tweets.filter("type_s='post'").groupBy("author_s").count().	
+orderBy(desc("count")).limit(10).show()
+
+
+import org.apache.spark.sql.functions._
+
+
+df.sort($"col1", $"col2".desc)
+
+sqlContext.sql("SELECT	COUNT(type_s)	FROM	tweets	WHERE	type_s='echo'").show()	
+tweets.filter("type_s='post'").groupBy("author_s").count().	
+orderBy(desc("count")).limit(10).show()	
+###############
+# RWAR
+lines = ['24960835,24960835,N,1955-05-27 00:00:00,(null),F,61,English,Black or African American,Married,Lutheran,53200',
+'24960840,24960840,Y,1948-01-12 00:00:00,2015-10-24 00:00:00,M,68,English,White or Caucasian,Married,Catholic Roman,53000',
+'24960842,24960842,N,1986-05-23 00:00:00,(null),F,30,English,Black or African American,Single,Baptist,53200']
+
+parts = [l.split() for l in lines]
+parts = map(lambda l : l.split(), lines)
+parts = lines.map(lambda l: l.split(","))
+

@@ -1,0 +1,91 @@
+# PySpark_standalone_cheat_sheet.txt
+
+Jay Urbain, PhD
+1/20/2017
+
+Introduction:  
+In addition to running on a Hadoop Mesos or YARN cluster managers, Spark also provides a simple standalone deploy mode. You can launch a standalone cluster either manually, by starting a master and workers by hand, or use our provided launch scripts. It is also possible to run these daemons on a single machine for testing.
+
+References: 
+Spark Standalone Mode
+http://spark.apache.org/docs/latest/spark-standalone.html
+
+Reference: Spark Python programming guide
+http://spark.apache.org/docs/0.9.0/python-programming-guide.html
+
+1) Download Spark
+Select a current release, pre-build for Hadoop 2.7 or later, and direct download.
+http://spark.apache.org/downloads.html
+
+Unzip the distribution into a convenient directory.
+
+2) Run PySpark locally
+Verfiy your Python version (I'll show you how to change this below):
+python --version 
+
+To change version of Python. For Windows, replace 'export' with 'SET=':
+export PYSPARK_PYTHON=/Applications/anaconda/bin/python3.5
+export PYSPARK_DRIVER_PYTHON=ipython3.5
+
+Start PySpark in a terminal window:
+bin/pyspark
+
+(py35) Jays-MBP-2:spark-1.6.0-bin-hadoop2.6 jayurbain$ bin/pyspark
+Python 2.7.11 (default, Feb 27 2016, 04:08:41) 
+[GCC 4.2.1 Compatible Apple LLVM 7.0.2 (clang-700.1.81)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+17/01/20 10:05:04 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /__ / .__/\_,_/_/ /_/\_\   version 1.6.0
+      /_/
+
+Using Python version 2.7.11 (default, Feb 27 2016 04:08:41)
+SparkContext available as sc, HiveContext available as sqlContext.
+>>> 
+
+Test:
+import random
+items = [1, 2, 3, 4, 5, 6, 7]
+random.shuffle(items)
+items
+#[7, 3, 2, 5, 6, 4, 1]
+random.sample([1, 2, 3, 4, 5],  3)  # Choose 3 elements
+#[4, 1, 5]
+
+# To run PySpark in Jupyter Notebook:
+IPYTHON_OPTS="notebook" bin/pyspark
+
+# To run PySpark with more memory
+bin/pyspark --driver-memory 8g
+
+# To run PySpark in a Jupyter Notebook and include additional packages (graph)
+IPYTHON_OPTS="notebook" bin/pyspark --packages graphframes:graphframes:0.1.0-spark1.6
+
+# To run PySpark on a Databricks cluster:
+# Running spark on databricks cluster
+bin/pyspark --packages com.databricks:spark-csv_2.10:1.0.3
+
+# Examples setting all environment variables:
+
+You can also set environment variables. For Windows, replace 'export' with 'SET='.
+E.g.,
+# Python 2.7
+export SPARK_HOME=/Users/jayurbain/Dropbox/spark-1.6.2-bin-hadoop2.6
+export IPYTHON=1
+export PYSPARK_PYTHON=/Applications/anaconda/bin/python2.7
+export PYSPARK_DRIVER_PYTHON=ipython2.7
+export PYSPARK_DRIVER_PYTHON_OPTS="notebook"
+
+# Python 3.5
+export SPARK_HOME=/Users/jayurbain/Dropbox/spark-1.6.2-bin-hadoop2.6
+export IPYTHON=1
+export PYSPARK_PYTHON=/Applications/anaconda/bin/python3.5
+export PYSPARK_DRIVER_PYTHON=ipython3.5
+export PYSPARK_DRIVER_PYTHON_OPTS="notebook"
+
+/Users/jayurbain/Dropbox/spark-1.6.2-bin-hadoop2.6/bin/pyspark
+
+3) PySpark also includes several sample programs in the distribution python/examples folder.

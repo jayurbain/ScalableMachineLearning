@@ -1,0 +1,42 @@
+# Anaconda environment cheat sheet
+Jay Urbain, PhD
+1/20/2018
+
+# Anaconda home page and download
+# Follow the instructions for your platform
+https://www.continuum.io/
+
+# Managing Anaconda Environment
+http://conda.pydata.org/docs/using/envs.html
+
+List environments
+conda info --envs
+or
+conda env list
+
+py27                     /Applications/anaconda/envs/py27
+py27np17                 /Applications/anaconda/envs/py27np17
+py35                     /Applications/anaconda/envs/py35
+python3                  /Applications/anaconda/envs/python3
+tensorflow               /Applications/anaconda/envs/tensorflow
+tensorflow35             /Applications/anaconda/envs/tensorflow35
+root                  *  /Applications/anaconda
+
+# Create new environment
+conda create -n py35 python=3.5
+conda create -n py27 python=2.7
+
+# switch environmnents
+source activate py35
+
+(py35) Jays-MBP-2:Dropbox jayurbain$ python --version
+Python 3.5.1 :: Continuum Analytics, Inc.
+
+# start jupyter notebook
+jupyter_notebook
+
+IDE's
+# Continum comes with a nice Python IDE called Spyder. Another execellent Python IDE
+is PyCharm: https://www.jetbrains.com/pycharm/
+
+
